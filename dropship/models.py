@@ -1,45 +1,11 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
-from django.contrib.auth.models import AbstractUser,PermissionsMixin
+from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.validators import UnicodeUsernameValidator
-from django.contrib.auth.hashers import make_password
-from django.contrib.auth.models import UserManager
-from datetime import date, datetime, timedelta
-from django.contrib.auth.hashers import make_password
 
-class MyUserManager(UserManager):
-
-    def _create_user(self, username, email, password, **extra_fields):
-        if not username:
-            raise ValueError('The given username must be set')
-
-        if not email:
-            raise ValueError('The given email must be set')
-
-        email = self.normalize_email(email)
-        username = self.model.normalize_username(username)
-        user = self.model(username=username, email=email, **extra_fields)
-        user.set_password(password)
-        user.save(using=self._db)
-        return user
-
-    def create_user(self, username, email, password, **extra_fields):
-        extra_fields.setdefault('is_staff', False)
-        extra_fields.setdefault('is_superuser', False)
-        return self._create_user(username, email,make_password(password), **extra_fields)
-
-    def create_superuser(self, username, email, password, **extra_fields):
-        extra_fields.setdefault('is_staff', True)
-        extra_fields.setdefault('is_superuser', True)
-
-        if extra_fields.get('is_staff') is not True:
-            raise ValueError('Superuser must have is_staff=True.')
-        if extra_fields.get('is_superuser') is not True:
-            raise ValueError('Superuser must have is_superuser=True.')
-
-        return self._create_user(username, email,password, **extra_fields)
-
+from datetime import datetime
+from .managers import MyUserManager
 
 class Member(AbstractUser):
     username_validator = UnicodeUsernameValidator()
@@ -83,10 +49,10 @@ class Project(TimestampModel):
     title = models.CharField(max_length=128)
     description = models.TextField()
     code = models.CharField(max_length=64, unique=True, null=False)
-    
-    def __str__(self):
-        return "{0} {1}".format(self.code, self.title)
 
+
+class Label(TimestampModel):
+    name = models.CharField(max_length=128)
 
 class Issue(TimestampModel):
     BUG = "BUG"
@@ -95,8 +61,16 @@ class Issue(TimestampModel):
     EPIC = "EPIC"
     TYPES = [(BUG, BUG), (TASK, TASK), (STORY, STORY), (EPIC, EPIC)]
 
-    reporter = models.ForeignKey(Member, related_name="reporter", on_delete=models.CASCADE)
-    assignee = models.ForeignKey(Member, related_name="assignee", on_delete=models.SET_NULL, null=True)
+    Open = "Open"
+    InProgress = "InProgress"
+    InReview = "InReview"
+    CodeComplete = "CodeComplete"
+    QATesting = "QA Testing"
+    Done = "Done"
+
+    STATUS = [(Open, Open), (InProgress, InProgress), (InReview, InReview),
+              (CodeComplete, CodeComplete), (QATesting, QATesting), (Done, Done)]
+
     title = models.CharField(max_length=128)
     description = models.TextField()
 
@@ -105,6 +79,35 @@ class Issue(TimestampModel):
     project = models.ForeignKey(
         Project, on_delete=models.CASCADE, related_name="issues", null=False
     )
+    user = models.ForeignKey(Member, related_name="reporter", on_delete=models.CASCADE)
+    assignee = models.ForeignKey(Member, related_name="assignee", on_delete=models.SET_NULL, null=True)
+    watchers = models.ManyToManyField(Member, related_name="watchers", blank=True)
+    labels = models.ManyToManyField(Label, related_name="issues", blank=True)
+    status = models.CharField(max_length=20, choices=STATUS, default=Open, null=False)
 
-    def __str__(self):
-        return "{0}-{1}".format(self.project.code, self.title)
+class Comment(TimestampModel):
+    user = models.ForeignKey(Member, on_delete=models.DO_NOTHING)
+    issue = models.ForeignKey(Issue, related_name="comments", on_delete=models.CASCADE, default=None)
+    comment = models.TextField(default="")
+
+class Sprint(TimestampModel):
+
+    START = "START"
+    STOP = "STOP"
+    TYPES = [(START, START), (STOP, STOP)]
+    type = models.CharField(max_length=8, choices=TYPES, null=True)
+
+    title = models.CharField(max_length=128)
+    description = models.TextField()
+    start_date = models.DateField()
+    end_date = models.DateField()
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name="sprint", null=False
+    )
+    issues = models.ManyToManyField(Issue, related_name="sprints", blank=True)
+
+class TimeLog(TimestampModel):
+    user = models.ForeignKey(Member, on_delete=models.CASCADE,  default=None)
+    estimated_time = models.CharField(max_length=10)
+    logged_time = models.CharField(max_length=10)
+    issue = models.ForeignKey(Issue, related_name="timelogs", on_delete=models.CASCADE, default=None)

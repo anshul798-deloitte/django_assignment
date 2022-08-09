@@ -14,15 +14,22 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
-from .views import IssueList, ProjectList, LoginView, RegisterView
+from django.urls import path, include
+from .views import CommentList, EmailView, IssueList, LabelList, ProjectList, LoginView, RegisterView, SprintList, TimeLogList
+from rest_framework.routers import DefaultRouter
+
+router = DefaultRouter()
+router.register('register', RegisterView, basename='register')
+router.register('projects', ProjectList, basename='projects')
+router.register('issues', IssueList, basename='issues')
+router.register('labels', LabelList, basename='labels')
+router.register('sprints', SprintList, basename='sprints')
+router.register('comments', CommentList, basename='comments')
+router.register('timelogs', TimeLogList, basename='timelogs')
 
 urlpatterns = [
-    path('register/', RegisterView.as_view(), name='register'),
+    path('', include(router.urls)),
     path('login/', LoginView.as_view(), name='login'),
     path('admin/', admin.site.urls, name='admin'),
-    path('projects/<int:pk>', ProjectList.as_view(), name='projectById'),
-    path('projects/', ProjectList.as_view(), name='projects'),
-    path('issues/<int:pk>', IssueList.as_view(), name='issueById'),
-    path('issues/', IssueList.as_view(), name='issues'),
+    path('email/', EmailView.as_view(), name='email')
 ]

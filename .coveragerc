@@ -1,15 +1,15 @@
 [run]
-data_file = out/.coverage
 source =
     dropship
 omit =
-	*__init__*
+	*tests*
+    *apps.py
+    *manage.py
+    *__init__.py
+    *pycache*
+    *managers*
     *migrations*
+    *asgi*
     *wsgi*
+    *settings*
     *venv*
-
-[html]
-directory = out/coverage
-
-[xml]
-output = out/coverage.xml

@@ -5,3 +5,6 @@ db.sqlite3
 *.pyc
 out/
 week1.sqlite3
+.coverage
+dropship/migrations/*
+htmlcov/*
