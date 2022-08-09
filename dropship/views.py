@@ -5,12 +5,13 @@ from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
 from .permissions import IsAdmin, IsManager, IsMember
-from .models import Issue, Project
-from .serializers import IssueSerializer, ProjectSerializer, RegisterSerializer
-from .serializers import SignInSerializer
+from .models import Issue, Member, Project
+from .serializers import RegisterSerializer, SignInSerializer
 from django.contrib.auth import authenticate
 from django.http import JsonResponse
-from django.contrib.auth.hashers import make_password
+from django.forms.models import model_to_dict
+from django.core import serializers
+from django.http import HttpResponse
 
 class RegisterView(APIView):
     def post(self, request):
@@ -51,37 +52,42 @@ class LoginView(APIView):
         else:
             return JsonResponse({'message':serializer.errors}, status=400)
 
+
 class ProjectList(APIView):
 
-    permission_classes = [IsAdmin]
+    permission_classes = [IsAuthenticated, IsAdmin]
 
     def get(self, request, pk=None):
         id = pk
 
         if id is not None:
             project = Project.objects.get(id=id)
-            serialize = ProjectSerializer(project)
-            return Response(serialize.data)
+            return JsonResponse(model_to_dict(project))
 
         projects = Project.objects.all()
-        serialize = ProjectSerializer(projects, many=True)
-        return Response(serialize.data)
+        project_list = serializers.serialize('json',
+                                      list(projects))
+        return HttpResponse(project_list, content_type='application/json')
 
     def post(self, request):
-        serializer = ProjectSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if request.data['title'] and request.data['description'] and request.data['code']:
+            project = Project(creator=request.user, title=request.data['title'], description=request.data['description'], code=request.data['code'])
+            project.save()
+            
+            return JsonResponse(model_to_dict(project))
+        return JsonResponse(status=status.HTTP_400_BAD_REQUEST)
     
     def put(self, request, pk):
         id = pk
         project = Project.objects.get(id=id)
-        serializer = ProjectSerializer(instance=project ,data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        if request.data['title'] and request.data['description'] and request.data['code']:
+            project.title = request.data['title']
+            project.description = request.data['description']
+            project.code = request.data['code']
+            project.save()
+            return JsonResponse(model_to_dict(project))
+        return JsonResponse(status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
         id = pk
@@ -92,35 +98,47 @@ class ProjectList(APIView):
 
 class IssueList(APIView):
     
-    permission_classes = [IsAdmin|IsManager|IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, pk=None):
         id = pk
 
         if id is not None:
             issue = Issue.objects.get(id=id)
-            serialize = IssueSerializer(issue)
-            return Response(serialize.data)
+            return JsonResponse(model_to_dict(issue))
 
         issues = Issue.objects.all()
-        serialize = IssueSerializer(issues, many=True)
-        return Response(serialize.data)
+        issue_list = serializers.serialize('json',
+                                      list(issues))
+        return HttpResponse(issue_list, content_type='application/json')
 
     def post(self, request):
-        serializer = IssueSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if request.data['title'] and request.data['description'] and request.data['type'] and request.data['project']:
+            project = Project.objects.get(id=request.data['project'])
+            issue = Issue(reporter=request.user, title=request.data['title'], description=request.data['description'], type=request.data['type'], project=project)
+            issue.save()
+            
+            return JsonResponse(model_to_dict(issue))
+        return JsonResponse(status=status.HTTP_400_BAD_REQUEST)
     
     def put(self, request, pk):
         id = pk
         issue = Issue.objects.get(id=id)
-        serializer = IssueSerializer(instance=issue ,data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if request.data['title'] and request.data['description'] and request.data['type']:
+            issue.title = request.data['title']
+            issue.description = request.data['description']
+            issue.type = request.data['type']
+            issue.save()
+            return JsonResponse(model_to_dict(issue))
+        return JsonResponse(status=status.HTTP_400_BAD_REQUEST)
+    
+    def patch(self, request, pk):
+        id = pk
+        issue = Issue.objects.get(id=id)
+        user = Member.objects.get(id=request.data['assignee'])
+        issue.assignee = user
+        issue.save()
+        return JsonResponse(model_to_dict(issue))
 
     def delete(self, request, pk):
         id = pk

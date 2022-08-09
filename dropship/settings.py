@@ -42,7 +42,8 @@ INSTALLED_APPS = [
     "rest_framework",
     'rest_framework_simplejwt',
     # Apps
-    'dropship'
+    'dropship',
+    'django_nose',
 ]
 
 MIDDLEWARE = [
@@ -141,3 +142,10 @@ SIMPLE_JWT = {
 'ACCESS_TOKEN_LIFETIME': timedelta(days=10),
 'REFRESH_TOKEN_LIFETIME': timedelta(days=20)
 }
+
+TEST_RUNNER = 'django_nose.NoseTestSuiteRunner'
+
+NOSE_ARGS = [
+    '--with-coverage',
+    '--cover-package=foo,bar',
+]
