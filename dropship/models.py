@@ -78,6 +78,8 @@ class TimestampModel(models.Model):
 
 
 class Project(TimestampModel):
+
+    creator = models.OneToOneField(Member, related_name="manager", on_delete=models.CASCADE)
     title = models.CharField(max_length=128)
     description = models.TextField()
     code = models.CharField(max_length=64, unique=True, null=False)
@@ -93,6 +95,8 @@ class Issue(TimestampModel):
     EPIC = "EPIC"
     TYPES = [(BUG, BUG), (TASK, TASK), (STORY, STORY), (EPIC, EPIC)]
 
+    reporter = models.OneToOneField(Member, related_name="reporter", on_delete=models.CASCADE)
+    assignee = models.ForeignKey(Member, related_name="assignee", on_delete=models.SET_NULL, null=True)
     title = models.CharField(max_length=128)
     description = models.TextField()
 

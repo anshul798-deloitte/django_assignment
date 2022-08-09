@@ -3,10 +3,10 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
-
+from rest_framework.permissions import IsAuthenticated
 from .permissions import IsAdmin, IsManager, IsMember
-from .models import Project
-from .serializers import ProjectSerializer
+from .models import Issue, Project
+from .serializers import IssueSerializer, ProjectSerializer
 from .serializers import SignInSerializer
 from django.contrib.auth import authenticate
 from django.http import JsonResponse
@@ -44,6 +44,8 @@ class LoginView(APIView):
 
 class ProjectList(APIView):
 
+    permission_classes = [IsAdmin]
+
     def get(self, request, pk=None):
         id = pk
 
@@ -77,3 +79,42 @@ class ProjectList(APIView):
         project = Project.objects.get(id=id)
         project.delete()
         return Response(project)
+
+
+class IssueList(APIView):
+    
+    permission_classes = [IsAdmin|IsManager|IsAuthenticated]
+
+    def get(self, request, pk=None):
+        id = pk
+
+        if id is not None:
+            issue = Issue.objects.get(id=id)
+            serialize = IssueSerializer(issue)
+            return Response(serialize.data)
+
+        issues = Issue.objects.all()
+        serialize = IssueSerializer(issues, many=True)
+        return Response(serialize.data)
+
+    def post(self, request):
+        serializer = IssueSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def put(self, request, pk):
+        id = pk
+        issue = Issue.objects.get(id=id)
+        serializer = IssueSerializer(instance=issue ,data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        id = pk
+        issue = Issue.objects.get(id=id)
+        issue.delete()
+        return Response(issue)
