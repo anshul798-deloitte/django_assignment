@@ -6,10 +6,19 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
 from .permissions import IsAdmin, IsManager, IsMember
 from .models import Issue, Project
-from .serializers import IssueSerializer, ProjectSerializer
+from .serializers import IssueSerializer, ProjectSerializer, RegisterSerializer
 from .serializers import SignInSerializer
 from django.contrib.auth import authenticate
 from django.http import JsonResponse
+from django.contrib.auth.hashers import make_password
+
+class RegisterView(APIView):
+    def post(self, request):
+        serializer = RegisterSerializer(data=request.data)
+        if(serializer.is_valid()):
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class LoginView(APIView):
     permission_classes = ()
